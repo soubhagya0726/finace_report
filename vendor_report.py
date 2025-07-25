@@ -11,8 +11,8 @@ from ftplib import FTP_TLS
 st.set_page_config(page_title="Finance Report Generator", layout="wide")
 
 # --- Authentication Setup ---
-USERNAME = os.getenv("MARKETING_USER", "finance")  # Change the default username here if needed
-PASSWORD = os.getenv("MARKETING_PASS", "finance#1298")  # Change the default password here if needed
+USERNAME = os.getenv("MARKETING_USER", "finance")  # Default: "finance"
+PASSWORD = os.getenv("MARKETING_PASS", "finance#1298")  # Default: "finance#1298"
 
 def authenticate(username, password):
     """Function to check if username and password match"""
@@ -133,8 +133,7 @@ def urse(user_file):
 # --- Streamlit UI ---
 if 'authenticated' not in st.session_state or not st.session_state['authenticated']:
     # If not authenticated, show login page
-    if login():
-        st.experimental_rerun()
+    login()
 else:
     # Main app functionality after login
     st.title("Finance Report Generator")
