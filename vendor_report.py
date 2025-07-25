@@ -94,27 +94,17 @@ def Vendor_ledger_analysis(uploaded_csv_file):
 
 # --- User Remarks Upload (Step 2) ---
 def urse(user_file):
-    if 'processed_vendor_report' not in st.session_state:
-        st.error("Please complete Step 1 (Vendor Report Upload) before proceeding.")
-        return pd.DataFrame()
+    """Handles the uploading of user remarks and merges them with the processed vendor data"""
 
-    original_df = st.session_state['processed_vendor_report']
-    user_df = pd.read_csv(user_file)
-
-    # Clean 'Invoice No' in user data and original data
-    user_df['Invoice No'] = user_df['Invoice No'].str.upper().str.replace(r'[^A-Za-z0-9]', '', regex=True)
-    original_df['Invoice No'] = original_df['Invoice No'].str.upper().str.replace(r'[^A-Za-z0-9]', '', regex=True)
-
-    if 'User Remark' not in user_df.columns:
+    # Check if 'User Remark' column exists in the user file
+    if 'User_Remark' not in user_df.columns:
         st.error("User Remark column is missing from the uploaded file.")
         return pd.DataFrame()
 
-    # Merge the user remarks with the original processed data
-    merged = pd.merge(original_df, user_df, on="Invoice No", how="left", suffixes=('', '_user'))
-    merged['Final Status'] = merged.get('User Remark', 'NA')
 
-    # Convert the merged data to CSV and upload to FTP
-    csv_bytes = merged.to_csv(index=False).encode('utf-8')
+    # Prepare the merged data for download
+    csv_bytes = user_df.to_csv(index=False).encode('utf-8')
+    
     ftp_success, msg = upload_to_ftp(
         file_bytes=csv_bytes,
         filename='user_remark_vendor_report.csv',
