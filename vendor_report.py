@@ -110,4 +110,4 @@ def urse(user_file):
     )
 
     if ftp_success:
-        st.success("✅ Final report uploaded
+        st.success("✅ Final report uploaded")
