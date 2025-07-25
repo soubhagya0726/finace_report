@@ -10,12 +10,31 @@ from ftplib import FTP_TLS
 # Configure page
 st.set_page_config(page_title="Finance Report Generator", layout="wide")
 
-# --- Authentication ---
-USERNAME = os.getenv("MARKETING_USER", "finance")
-PASSWORD = os.getenv("MARKETING_PASS", "finance#1298")
+# --- Authentication Setup ---
+USERNAME = os.getenv("MARKETING_USER", "finance")  # Change the default username here if needed
+PASSWORD = os.getenv("MARKETING_PASS", "finance#1298")  # Change the default password here if needed
 
 def authenticate(username, password):
+    """Function to check if username and password match"""
     return username == USERNAME and password == PASSWORD
+
+# --- Login Functionality ---
+def login():
+    """Handles the login process"""
+    st.title("Login")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+    
+    # Login button
+    if st.button("Login"):
+        if authenticate(username, password):
+            st.session_state["authenticated"] = True
+            st.success("Login Successful!")
+            return True
+        else:
+            st.session_state["authenticated"] = False
+            st.error("Invalid username or password.")
+            return False
 
 # --- FTP Upload ---
 def upload_to_ftp(file_bytes, filename, ftp_host, ftp_user, ftp_pass, ftp_dir='/'):
@@ -112,23 +131,29 @@ def urse(user_file):
 
 
 # --- Streamlit UI ---
-st.title("Finance Report Generator")
+if 'authenticated' not in st.session_state or not st.session_state['authenticated']:
+    # If not authenticated, show login page
+    if login():
+        st.experimental_rerun()
+else:
+    # Main app functionality after login
+    st.title("Finance Report Generator")
 
-# Step 1: Vendor Report Upload
-step_1 = st.selectbox("Select Step 1: Vendor Report Upload", ["Select", "Upload Vendor Report"])
-if step_1 == "Upload Vendor Report":
-    uploaded_csv = st.file_uploader("Upload Vendor CSV File", type=["csv"])
-    if uploaded_csv is not None:
-        # Process the Vendor Ledger CSV file (Step 1)
-        Vendor_ledger_analysis(uploaded_csv)
+    # Step 1: Vendor Report Upload
+    step_1 = st.selectbox("Select Step 1: Vendor Report Upload", ["Select", "Upload Vendor Report"])
+    if step_1 == "Upload Vendor Report":
+        uploaded_csv = st.file_uploader("Upload Vendor CSV File", type=["csv"])
+        if uploaded_csv is not None:
+            # Process the Vendor Ledger CSV file (Step 1)
+            Vendor_ledger_analysis(uploaded_csv)
 
-# Step 2: User Remarks Upload
-step_2 = st.selectbox("Select Step 2: User Remarks Upload", ["Select", "Upload User Remarks"])
-if step_2 == "Upload User Remarks":
-    if 'processed_vendor_report' not in st.session_state:
-        st.error("Please complete Step 1 before uploading the user remarks.")
-    else:
-        user_file = st.file_uploader("Upload User Remarks CSV", type=["csv"])
-        if user_file is not None:
-            # Process User Remarks Upload (Step 2)
-            urse(user_file)
+    # Step 2: User Remarks Upload
+    step_2 = st.selectbox("Select Step 2: User Remarks Upload", ["Select", "Upload User Remarks"])
+    if step_2 == "Upload User Remarks":
+        if 'processed_vendor_report' not in st.session_state:
+            st.error("Please complete Step 1 before uploading the user remarks.")
+        else:
+            user_file = st.file_uploader("Upload User Remarks CSV", type=["csv"])
+            if user_file is not None:
+                # Process User Remarks Upload (Step 2)
+                urse(user_file)
