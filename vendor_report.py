@@ -118,10 +118,10 @@ def urse(user_file):
     ftp_success, msg = upload_to_ftp(
         file_bytes=csv_bytes,
         filename='user_remark_vendor_report.csv',
-        ftp_host='your.ftp.server.com',
-        ftp_user='your_ftp_user',
-        ftp_pass='your_ftp_pass',
-        ftp_dir='/ftp/path/'
+        ftp_host='dev.buywclothes.com',
+        ftp_user='researchbuy',
+        ftp_pass='hYQ2eoGpmkJubN8',
+        ftp_dir='/home/researchbuy/public_html/wms_ax'
     )
 
     if ftp_success:
