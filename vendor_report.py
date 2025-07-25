@@ -8,7 +8,7 @@ import datetime
 import io
 import os
 from ftplib import FTP_TLS
-import pdfplumber
+
 
 # Configure page
 st.set_page_config(page_title="Finance Report Generator", layout="wide")
@@ -31,14 +31,6 @@ def upload_to_ftp(file_bytes, filename, ftp_host, ftp_user, ftp_pass, ftp_dir='/
     except Exception as e:
         return False, f"FTP upload failed: {e}"
 
-# --- PDF Extraction Function (Example) ---
-def extract_pdf_data(pdf_file):
-    with pdfplumber.open(pdf_file) as pdf:
-        pages = pdf.pages
-        text = ""
-        for page in pages:
-            text += page.extract_text()
-    return text
 
 # --- Process Vendor Report ---
 def Vendor_ledger_analysis(uploaded_pdf_file):
