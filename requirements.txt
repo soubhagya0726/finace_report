@@ -1,4 +1,5 @@
 streamlit
+pysftp
 pandas
 numpy
 openpyxl
