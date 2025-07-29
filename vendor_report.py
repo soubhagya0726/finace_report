@@ -80,6 +80,21 @@ def Vendor_ledger_analysis(uploaded_csv_file):
     grouped['Remarks'] = grouped['Total'].apply(lambda x: 'Not Duplicate' if x == 0 else 'Duplicate')
 
     df2 = df1.merge(grouped[['Invoice_No_clean', 'Remarks', 'Total']], on='Invoice_No_clean', how='left')
+    df_check = pd.read_csv('https://research.buywclothes.com/financereport/user_remark_vendor_report.csv')
+   
+
+    # Step 2: Remove 'User_Remark' column for matching
+    if 'User_Remarks' in df_check.columns:
+        df_check_no_remark = df_check.drop(columns=['User_Remarks'])
+    else:
+        df_check_no_remark = df_check.copy()
+
+    # Step 3: Remove matching rows from df2
+    df2_filtered = df2.merge(df_check_no_remark.drop_duplicates(), how='left', indicator=True)
+    df2_filtered = df2_filtered[df2_filtered['_merge'] == 'left_only'].drop(columns=['_merge'])
+
+    # Step 4: Merge df2_filtered and df_check
+    df3 = pd.concat([df2_filtered, df_check], ignore_index=True)
 
     st.dataframe(df2.head())
 
