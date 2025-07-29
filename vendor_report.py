@@ -5,13 +5,13 @@ import streamlit as st
 import pandas as pd
 import io
 import os
-from ftplib import FTP_TLS
+import pysftp
 
 # Configure Streamlit page
 st.set_page_config(page_title="Finance Report Generator", layout="wide")
 
 # --- Authentication Setup ---
-USERNAME = os.getenv("MARKETING_USER", "finance")  # Default fallback
+USERNAME = os.getenv("MARKETING_USER", "finance")
 PASSWORD = os.getenv("MARKETING_PASS", "finance#1298")
 
 # --- Ensure session state initialization ---
@@ -36,16 +36,29 @@ def login():
             st.session_state["authenticated"] = False
             st.error("❌ Invalid username or password.")
 
-# --- FTP Upload Function ---
-def upload_to_ftp(file_bytes, filename, ftp_host, ftp_user, ftp_pass, ftp_dir='/'):
+# --- SFTP Upload Function ---
+def upload_to_sftp(file_bytes, filename):
+    cnopts = pysftp.CnOpts()
+    cnopts.hostkeys = None  # Warning: disables host key checking for testing only
+
+    host = "dev.buywclothes.com"
+    port = 22922
+    username = "researchbuy"
+    password = "hYQ2eoGpmkJubN8"
+    remote_path = "/home/researchbuy/public_html/wms_ax"
+
     try:
-        with FTP_TLS(ftp_host) as ftp:
-            ftp.login(ftp_user, ftp_pass)
-            ftp.cwd(ftp_dir)
-            ftp.storbinary(f'STOR {filename}', io.BytesIO(file_bytes))
-            return True, "Upload successful."
+        with pysftp.Connection(
+            host=host, port=port, username=username, password=password, cnopts=cnopts
+        ) as sftp:
+            with sftp.cd(remote_path):
+                with open("temp_upload_file.csv", "wb") as f:
+                    f.write(file_bytes)
+                sftp.put("temp_upload_file.csv", filename)
+        os.remove("temp_upload_file.csv")  # Clean up temporary file
+        return True, "Upload successful via SFTP."
     except Exception as e:
-        return False, f"FTP upload failed: {e}"
+        return False, f"SFTP upload failed: {e}"
 
 # --- Step 1: Vendor Ledger Analysis ---
 def Vendor_ledger_analysis(uploaded_csv_file):
@@ -107,17 +120,10 @@ def urse(user_file):
     merged_df = processed_df.merge(user_df[['Invoice_No_clean', 'User_Remark']], on='Invoice_No_clean', how='left')
     csv_bytes = merged_df.to_csv(index=False).encode('utf-8')
 
-    ftp_success, msg = upload_to_ftp(
-        file_bytes=csv_bytes,
-        filename='user_remark_vendor_report.csv',
-        ftp_host='dev.buywclothes.com',
-        ftp_user='researchbuy',
-        ftp_pass='hYQ2eoGpmkJubN8',
-        ftp_dir='/home/researchbuy/public_html/wms_ax'
-    )
+    sftp_success, msg = upload_to_sftp(file_bytes=csv_bytes, filename="user_remark_vendor_report.csv")
 
-    if ftp_success:
-        st.success("✅ Step 2 complete: Report uploaded successfully.")
+    if sftp_success:
+        st.success("✅ Step 2 complete: Report uploaded via SFTP.")
         st.download_button("📥 Download Final Report", data=csv_bytes, file_name="final_report.csv", mime="text/csv")
     else:
         st.error(f"❌ {msg}")
