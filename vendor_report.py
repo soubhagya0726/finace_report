@@ -39,7 +39,7 @@ def login():
 # --- SFTP Upload Function ---
 def upload_to_sftp(file_bytes, filename):
     cnopts = pysftp.CnOpts()
-    cnopts.hostkeys = None  # Warning: disables host key checking for testing only
+    cnopts.hostkeys = None  # Disable host key verification for demo/testing
 
     host = "dev.buywclothes.com"
     port = 22922
@@ -55,7 +55,7 @@ def upload_to_sftp(file_bytes, filename):
                 with open("temp_upload_file.csv", "wb") as f:
                     f.write(file_bytes)
                 sftp.put("temp_upload_file.csv", filename)
-        os.remove("temp_upload_file.csv")  # Clean up temporary file
+        os.remove("temp_upload_file.csv")
         return True, "Upload successful via SFTP."
     except Exception as e:
         return False, f"SFTP upload failed: {e}"
@@ -66,7 +66,7 @@ def Vendor_ledger_analysis(uploaded_csv_file):
         df = pd.read_csv(uploaded_csv_file, encoding='cp1252', skiprows=8)
     except Exception as e:
         st.error(f"❌ Error reading the CSV file: {e}")
-        return pd.DataFrame()
+        return
 
     df['Invoice No'] = df['Invoice No'].astype(str)
     df['Debit'] = pd.to_numeric(df['Debit'], errors='coerce').fillna(0)
@@ -88,43 +88,34 @@ def Vendor_ledger_analysis(uploaded_csv_file):
     st.download_button("📥 Download Processed Report (Step 1)", data=csv_buffer.getvalue(),
                        file_name="vendor_analysis_output.csv", mime="text/csv")
 
-    st.session_state['processed_vendor_report'] = df2
-    st.success("✅ Step 1 complete: Vendor Report processed.")
+    # Optional: upload to SFTP too
+    upload = st.checkbox("Upload this file to server via SFTP")
+    if upload:
+        success, msg = upload_to_sftp(csv_buffer.getvalue().encode('utf-8'), "vendor_analysis_output.csv")
+        if success:
+            st.success("✅ File uploaded to server.")
+        else:
+            st.error(f"❌ {msg}")
 
-    return df2
-
-# --- Step 2: User Remarks Upload & Merge ---
+# --- Step 2: User Remarks Merge (now independent) ---
 def urse(user_file):
     try:
         user_df = pd.read_csv(user_file)
     except Exception as e:
-        st.error(f"❌ Error reading the uploaded user remarks file: {e}")
+        st.error(f"❌ Error reading the uploaded remarks file: {e}")
         return
 
-    if 'User_Remark' not in user_df.columns:
-        st.error("❌ 'User_Remark' column is missing.")
-        return
+    st.dataframe(user_df.head())
 
-    if 'Invoice_No_clean' not in user_df.columns:
-        if 'Invoice No' in user_df.columns:
-            user_df['Invoice_No_clean'] = user_df['Invoice No'].astype(str).str.replace(r'[^A-Za-z0-9]', '', regex=True)
-        else:
-            st.error("❌ Missing 'Invoice_No_clean' or 'Invoice No' column.")
-            return
+    # Optional: Add validation or transformation if needed
+    csv_bytes = user_df.to_csv(index=False).encode('utf-8')
 
-    processed_df = st.session_state.get('processed_vendor_report')
-    if processed_df is None:
-        st.error("❌ Please complete Step 1 before uploading remarks.")
-        return
-
-    merged_df = processed_df.merge(user_df[['Invoice_No_clean', 'User_Remark']], on='Invoice_No_clean', how='left')
-    csv_bytes = merged_df.to_csv(index=False).encode('utf-8')
-
-    sftp_success, msg = upload_to_sftp(file_bytes=csv_bytes, filename="user_remark_vendor_report.csv")
-
-    if sftp_success:
-        st.success("✅ Step 2 complete: Report uploaded via SFTP.")
-        st.download_button("📥 Download Final Report", data=csv_bytes, file_name="final_report.csv", mime="text/csv")
+    # Upload to SFTP
+    success, msg = upload_to_sftp(csv_bytes, "user_remark_vendor_report.csv")
+    if success:
+        st.success("✅ Step 2 complete: Remarks file uploaded via SFTP.")
+        st.download_button("📥 Download Uploaded Remarks File", data=csv_bytes,
+                           file_name="user_remark_vendor_report.csv", mime="text/csv")
     else:
         st.error(f"❌ {msg}")
 
@@ -135,13 +126,13 @@ def main():
     else:
         st.title("📊 Finance Report Generator")
 
-        st.subheader("Step 1: Upload Vendor Ledger CSV")
-        uploaded_file = st.file_uploader("Upload Vendor CSV File", type=["csv"])
+        st.subheader("Step 1: Upload and Analyze Vendor Ledger")
+        uploaded_file = st.file_uploader("Upload Vendor Ledger CSV", type=["csv"], key="vendor_csv")
         if uploaded_file:
             Vendor_ledger_analysis(uploaded_file)
 
         st.subheader("Step 2: Upload User Remarks (Optional)")
-        user_file = st.file_uploader("Upload User Remarks File", type=["csv"])
+        user_file = st.file_uploader("Upload User Remarks File", type=["csv"], key="remarks_csv")
         if user_file:
             urse(user_file)
 
