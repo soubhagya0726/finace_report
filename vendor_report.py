@@ -96,10 +96,10 @@ def Vendor_ledger_analysis(uploaded_csv_file):
     # Step 4: Merge df2_filtered and df_check
     df3 = pd.concat([df2_filtered, df_check], ignore_index=True)
 
-    st.dataframe(df2.head())
+    st.dataframe(df3.head())
 
     csv_buffer = io.StringIO()
-    df2.to_csv(csv_buffer, index=False)
+    df3.to_csv(csv_buffer, index=False)
     st.download_button("📥 Download Processed Report (Step 1)", data=csv_buffer.getvalue(),
                        file_name="vendor_analysis_output.csv", mime="text/csv")
 
