@@ -96,15 +96,37 @@ def Vendor_ledger_analysis(uploaded_csv_file):
 def urse(user_file):
     """Handles the uploading of user remarks and merges them with the processed vendor data"""
 
-    # Check if 'User Remark' column exists in the user file
+    # Step 1: Read uploaded file
+    try:
+        user_df = pd.read_csv(user_file)
+    except Exception as e:
+        st.error(f"❌ Error reading the uploaded user remarks file: {e}")
+        return
+
+    # Step 2: Clean and validate
     if 'User_Remark' not in user_df.columns:
-        st.error("User Remark column is missing from the uploaded file.")
-        return pd.DataFrame()
+        st.error("❌ 'User_Remark' column is missing from the uploaded file.")
+        return
 
+    if 'Invoice_No_clean' not in user_df.columns:
+        if 'Invoice No' in user_df.columns:
+            user_df['Invoice_No_clean'] = user_df['Invoice No'].astype(str).str.replace(r'[^A-Za-z0-9]', '', regex=True)
+        else:
+            st.error("❌ Missing 'Invoice_No_clean' or 'Invoice No' column in the user remarks file.")
+            return
 
-    # Prepare the merged data for download
-    csv_bytes = user_df.to_csv(index=False).encode('utf-8')
-    
+    # Step 3: Load processed vendor data
+    processed_df = st.session_state.get('processed_vendor_report')
+    if processed_df is None:
+        st.error("❌ Processed vendor report not found. Please complete Step 1 first.")
+        return
+
+    # Step 4: Merge both datasets
+    merged_df = processed_df.merge(user_df[['Invoice_No_clean', 'User_Remark']], on='Invoice_No_clean', how='left')
+
+    # Step 5: Prepare for upload
+    csv_bytes = merged_df.to_csv(index=False).encode('utf-8')
+
     ftp_success, msg = upload_to_ftp(
         file_bytes=csv_bytes,
         filename='user_remark_vendor_report.csv',
@@ -113,36 +135,9 @@ def urse(user_file):
         ftp_pass='hYQ2eoGpmkJubN8',
         ftp_dir='/home/researchbuy/public_html/wms_ax'
     )
-
+    # Step 6: Show result
     if ftp_success:
         st.success("✅ Step 2 - Final report uploaded successfully.")
+        st.download_button("Download Merged Report", data=csv_bytes, file_name="final_report.csv", mime="text/csv")
     else:
         st.error(f"❌ {msg}")
-
-
-# --- Streamlit UI ---
-if 'authenticated' not in st.session_state or not st.session_state['authenticated']:
-    # If not authenticated, show login page
-    login()
-else:
-    # Main app functionality after login
-    st.title("Finance Report Generator")
-
-    # Step 1: Vendor Report Upload
-    step_1 = st.selectbox("Select Step 1: Vendor Report Upload", ["Select", "Upload Vendor Report"])
-    if step_1 == "Upload Vendor Report":
-        uploaded_csv = st.file_uploader("Upload Vendor CSV File", type=["csv"])
-        if uploaded_csv is not None:
-            # Process the Vendor Ledger CSV file (Step 1)
-            Vendor_ledger_analysis(uploaded_csv)
-
-    # Step 2: User Remarks Upload
-    step_2 = st.selectbox("Select Step 2: User Remarks Upload", ["Select", "Upload User Remarks"])
-    if step_2 == "Upload User Remarks":
-        if 'processed_vendor_report' not in st.session_state:
-            st.error("Please complete Step 1 before uploading the user remarks.")
-        else:
-            user_file = st.file_uploader("Upload User Remarks CSV", type=["csv"])
-            if user_file is not None:
-                # Process User Remarks Upload (Step 2)
-                urse(user_file)
