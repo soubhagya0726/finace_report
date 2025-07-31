@@ -45,7 +45,7 @@ def upload_to_sftp(file_bytes, filename):
     port = 22922
     username = "researchbuy"
     password = "hYQ2eoGpmkJubN8"
-    remote_path = "/home/researchbuy/public_html/wms_ax"
+    remote_path = "/home/researchbuy/public_html/financereport"
 
     try:
         with pysftp.Connection(
