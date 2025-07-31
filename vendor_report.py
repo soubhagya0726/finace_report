@@ -83,18 +83,12 @@ def Vendor_ledger_analysis(uploaded_csv_file):
     df_check = pd.read_csv('https://research.buywclothes.com/financereport/user_remark_vendor_report.csv')
    
 
-    # Step 2: Remove 'User_Remark' column for matching
-    if 'User_Remarks' in df_check.columns:
-        df_check_no_remark = df_check.drop(columns=['User_Remarks'])
-    else:
-        df_check_no_remark = df_check.copy()
+    df2['KEY'] = (df2['Vendor code'].astype(str) + '-' +df2['Voucher'].astype(str) )
+    df_check['KEY'] = (df_check['Vendor code'].astype(str) + '-' +df_check['Voucher'].astype(str) )
+    filtered_table2 = df2[~df2['KEY'].isin(df_check['KEY'])]
 
-    # Step 3: Remove matching rows from df2
-    df2_filtered = df2.merge(df_check_no_remark.drop_duplicates(), how='left', indicator=True)
-    df2_filtered = df2_filtered[df2_filtered['_merge'] == 'left_only'].drop(columns=['_merge'])
-
-    # Step 4: Merge df2_filtered and df_check
-    df3 = pd.concat([df2_filtered, df_check], ignore_index=True)
+    df3 = pd.concat([df_check, filtered_table2], ignore_index=True)
+    df3 = df3.drop('KEY', axis=1)
 
     st.dataframe(df3.head())
 
