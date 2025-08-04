@@ -1,5 +1,6 @@
 streamlit
 pysftp
+paramiko==2.11.0
 pandas
 numpy
 openpyxl
