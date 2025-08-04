@@ -41,11 +41,17 @@ def login():
 def upload_to_sftp(file_bytes, filename):
     cnopts = pysftp.CnOpts()
     cnopts.hostkeys = None  # Disable host key verification for demo/testing
+    access_tokens = {
+        'host': st.secrets["access_tokens"]["host"],
+        'port': st.secrets["access_tokens"]["port"],
+        'username': st.secrets["access_tokens"]["username"],
+        'password': st.secrets["access_tokens"]["password"]
+    }
 
-    host = "dev.buywclothes.com"
-    port = 22922
-    username = "researchbuy"
-    password = "hYQ2eoGpmkJubN8"
+    # host = "dev.buywclothes.com"
+    # port = 22922
+    # username = "researchbuy"
+    # password = "hYQ2eoGpmkJubN8"
     remote_path = "/home/researchbuy/public_html/financereport"
 
     try:
