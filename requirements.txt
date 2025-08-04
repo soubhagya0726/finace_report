@@ -3,4 +3,3 @@ pysftp
 pandas
 numpy
 openpyxl
-paramiko
