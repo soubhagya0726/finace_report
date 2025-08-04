@@ -8,6 +8,7 @@ import os
 import pysftp
 
 
+
 # Configure Streamlit page
 st.set_page_config(page_title="Finance Report Generator", layout="wide")
 
