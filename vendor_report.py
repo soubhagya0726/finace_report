@@ -6,7 +6,7 @@ import pandas as pd
 import io
 import os
 import pysftp
-from paramiko import DSSKey
+
 
 # Configure Streamlit page
 st.set_page_config(page_title="Finance Report Generator", layout="wide")
