@@ -79,27 +79,44 @@ def Vendor_ledger_analysis(uploaded_csv_file):
     df1['Invoice_No_clean'] = df1['Invoice No'].str.replace(r'[^A-Za-z0-9]', '', regex=True)
     df1['KEY'] = (df1['Vendor code'].astype(str) + '-' +df1['Voucher'].astype(str)+ '-' +df1['Invoice_No_clean'].astype(str) )
     df1['Total'] = df1['Debit'] + df1['Credit']
+    # Step 2: Identify bank payments
+    df1['IS_BANK_PAYMENT'] = df1['Voucher'].str.startswith(('BP', 'BR'))
     
-#     grouped = df1.groupby('KEY')[['Debit', 'Credit']].sum().reset_index()
-#     grouped['Total'] = grouped['Debit'] + grouped['Credit']
+    # Step 3: Set Remarks as 'BANK PAYMENT' where applicable
+    df1['Remarks'] = df1['IS_BANK_PAYMENT'].apply(lambda x: 'BANK PAYMENT' if x else '')
     
+    # Step 4: Exclude bank payments from the sum
+    df1['AMOUNT_FOR_SUM'] = df1.apply(
+        lambda x: 0 if x['IS_BANK_PAYMENT'] else x['Total'], axis=1
+    )
     
-        # Group by AKEY
-    result = df1.groupby('KEY').agg(TOTAL_INVOICE_AMOUNT=('Total', 'sum'),COUNT=('KEY', 'count')).reset_index()
-
-    # Define status
-    def get_status(row):
+    # Step 5: Group by KEY for non-bank rows
+    grouped = df1[~df1['IS_BANK_PAYMENT']].groupby('KEY').agg(
+        TOTAL_INVOICE_AMOUNT=('AMOUNT_FOR_SUM', 'sum'),
+        COUNT=('KEY', 'count')
+    ).reset_index()
+    
+    # Step 6: Determine Remarks for non-bank rows
+    def get_remarks(row):
         if row['COUNT'] == 1:
             return 'NOT DUPLICATE'
         elif row['TOTAL_INVOICE_AMOUNT'] == 0:
             return 'CONTRA'
         else:
             return 'DUPLICATE'
+    
+    grouped['REMARKS_NON_BANK'] = grouped.apply(get_remarks, axis=1)
+    
+    # Step 7: Merge Remarks back to df1
+    df1 = df1.merge(grouped[['KEY', 'REMARKS_NON_BANK']], on='KEY', how='left')
+    
+    # Step 8: Finalize Remarks column
+    df1['Remarks'] = df1['Remarks'].combine_first(df1['REMARKS_NON_BANK'])
+    
+    # Step 9: Drop temporary columns
+    df1.drop(columns=['IS_BANK_PAYMENT', 'AMOUNT_FOR_SUM', 'REMARKS_NON_BANK'], inplace=True)
+    df2 = df1
 
-    result['Remarks'] = result.apply(get_status, axis=1)
-
-    # Merge the status back to the original DataFrame
-    df2 = df1.merge(result[['KEY', 'Remarks','TOTAL_INVOICE_AMOUNT']], on='KEY', how='left')
     
     try:
         df_check = pd.read_csv('https://research.buywclothes.com/financereport/user_remark_vendor_report.csv')
