@@ -71,20 +71,32 @@ def vendor_ledger_analysis(uploaded_csv_file):
     df['Debit'] = pd.to_numeric(df['Debit'], errors='coerce').fillna(0)
     df['Credit'] = pd.to_numeric(df['Credit'], errors='coerce').fillna(0)
 
+    # Filter out 'opening' rows
     df1 = df[~df['Invoice No'].str.lower().str.startswith('opening')].copy()
+
+    # Clean invoice no
     df1['Invoice_No_clean'] = df1['Invoice No'].str.replace(r'[^A-Za-z0-9]', '', regex=True)
-    df1['KEY'] = df1['Vendor code'].astype(str) + '-' + df1['Voucher'].astype(str) + '-' + df1['Invoice_No_clean']
-
+    df1['KEY'] = df1['Vendor code'].astype(str) + '-' + df1['Voucher'].astype(str) + '-' + df1['Invoice_No_clean'].astype(str)
     df1['Total'] = df1['Debit'] + df1['Credit']
+
+    # Mark bank payments explicitly as boolean
     df1['IS_BANK_PAYMENT'] = df1['Voucher'].str.startswith(('BP', 'BR')).astype(bool)
-    df1['Remarks'] = df1['IS_BANK_PAYMENT'].apply(lambda x: 'BANK PAYMENT' if x else '')
-    df1['AMOUNT_FOR_SUM'] = df1.apply(lambda x: 0 if x['IS_BANK_PAYMENT'] else x['Total'], axis=1)
 
-    grouped = df1[~df1['IS_BANK_PAYMENT']].groupby('KEY').agg(
-        TOTAL_INVOICE_AMOUNT=('AMOUNT_FOR_SUM', 'sum'),
-        COUNT=('KEY', 'count')
-    ).reset_index()
+    # Assign 'BANK PAYMENT' remarks for bank payments
+    df1.loc[df1['IS_BANK_PAYMENT'], 'Remarks'] = 'BANK PAYMENT'
 
+    # For non-bank payments, calculate sum and counts grouped by KEY
+    grouped = (
+        df1.loc[~df1['IS_BANK_PAYMENT']]
+        .groupby('KEY')
+        .agg(
+            TOTAL_INVOICE_AMOUNT=('Total', 'sum'),
+            COUNT=('KEY', 'count')
+        )
+        .reset_index()
+    )
+
+    # Define remarks for non-bank grouped rows
     def get_remarks(row):
         if row['COUNT'] == 1:
             return 'NOT DUPLICATE'
@@ -94,9 +106,18 @@ def vendor_ledger_analysis(uploaded_csv_file):
             return 'DUPLICATE'
 
     grouped['REMARKS_NON_BANK'] = grouped.apply(get_remarks, axis=1)
+
+    # Merge these remarks back into df1 on KEY
     df1 = df1.merge(grouped[['KEY', 'REMARKS_NON_BANK']], on='KEY', how='left')
-    df1['Remarks'] = df1['Remarks'].combine_first(df1['REMARKS_NON_BANK'])
-    df1.drop(columns=['IS_BANK_PAYMENT', 'AMOUNT_FOR_SUM', 'REMARKS_NON_BANK'], inplace=True)
+
+    # Fill Remarks: bank payments already have 'BANK PAYMENT',
+    # so fill remaining blanks with non-bank remarks
+    df1['Remarks'] = df1['Remarks'].fillna(df1['REMARKS_NON_BANK'])
+
+    # Drop helper columns
+    df1.drop(columns=['IS_BANK_PAYMENT', 'REMARKS_NON_BANK', 'Invoice_No_clean'], inplace=True)
+
+    # (The rest of your logic for merging with df_check remains unchanged)
 
     try:
         df_check = pd.read_csv('https://research.buywclothes.com/financereport/user_remark_vendor_report.csv')
