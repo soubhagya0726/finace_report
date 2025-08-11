@@ -78,7 +78,8 @@ def Vendor_ledger_analysis(uploaded_csv_file):
     df1 = df[~df['Invoice No'].str.lower().str.startswith('opening')]
     df1['Invoice_No_clean'] = df1['Invoice No'].str.replace(r'[^A-Za-z0-9]', '', regex=True)
     df1['KEY'] = (df1['Vendor code'].astype(str) + '-' +df1['Voucher'].astype(str)+ '-' +df1['Invoice_No_clean'].astype(str) )
-
+    df1['Total'] = df1['Debit'] + df1['Credit']
+    
 #     grouped = df1.groupby('KEY')[['Debit', 'Credit']].sum().reset_index()
 #     grouped['Total'] = grouped['Debit'] + grouped['Credit']
     
