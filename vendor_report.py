@@ -76,7 +76,7 @@ def vendor_ledger_analysis(uploaded_csv_file):
     df1['KEY'] = df1['Vendor code'].astype(str) + '-' + df1['Voucher'].astype(str) + '-' + df1['Invoice_No_clean']
 
     df1['Total'] = df1['Debit'] + df1['Credit']
-    df1['IS_BANK_PAYMENT'] = df1['Voucher'].str.startswith(('BP', 'BR'))
+    df1['IS_BANK_PAYMENT'] = df1['Voucher'].str.startswith(('BP', 'BR')).astype(bool)
     df1['Remarks'] = df1['IS_BANK_PAYMENT'].apply(lambda x: 'BANK PAYMENT' if x else '')
     df1['AMOUNT_FOR_SUM'] = df1.apply(lambda x: 0 if x['IS_BANK_PAYMENT'] else x['Total'], axis=1)
 
