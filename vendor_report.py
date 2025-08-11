@@ -84,7 +84,7 @@ def Vendor_ledger_analysis(uploaded_csv_file):
     
     
         # Group by AKEY
-    result = df.groupby('KEY').agg(TOTAL_INVOICE_AMOUNT=('Total', 'sum'),COUNT=('KEY', 'count')).reset_index()
+    result = df1.groupby('KEY').agg(TOTAL_INVOICE_AMOUNT=('Total', 'sum'),COUNT=('KEY', 'count')).reset_index()
 
     # Define status
     def get_status(row):
