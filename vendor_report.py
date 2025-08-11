@@ -42,12 +42,7 @@ def login():
 def upload_to_sftp(file_bytes, filename):
     cnopts = pysftp.CnOpts()
     cnopts.hostkeys = None  # Disable host key verification for demo/testing
-    # access_tokens = {
-    #     'host': st.secrets["access_tokens"]["host"],
-    #     'port': st.secrets["access_tokens"]["port"],
-    #     'username': st.secrets["access_tokens"]["username"],
-    #     'password': st.secrets["access_tokens"]["password"]
-    # }
+    
 
     host = "dev.buywclothes.com"
     port = 22922
@@ -82,21 +77,43 @@ def Vendor_ledger_analysis(uploaded_csv_file):
 
     df1 = df[~df['Invoice No'].str.lower().str.startswith('opening')]
     df1['Invoice_No_clean'] = df1['Invoice No'].str.replace(r'[^A-Za-z0-9]', '', regex=True)
+    df1['KEY'] = (df1['Vendor code'].astype(str) + '-' +df1['Voucher'].astype(str)+ '-' +df1['Invoice_No_clean'].astype(str) )
 
-    grouped = df1.groupby('Invoice_No_clean')[['Debit', 'Credit']].sum().reset_index()
-    grouped['Total'] = grouped['Debit'] + grouped['Credit']
-    grouped['Remarks'] = grouped['Total'].apply(lambda x: 'Not Duplicate' if x == 0 else 'Duplicate')
+#     grouped = df1.groupby('KEY')[['Debit', 'Credit']].sum().reset_index()
+#     grouped['Total'] = grouped['Debit'] + grouped['Credit']
+    
+    
+        # Group by AKEY
+    result = df.groupby('KEY').agg(TOTAL_INVOICE_AMOUNT=('Total', 'sum'),COUNT=('KEY', 'count')).reset_index()
 
-    df2 = df1.merge(grouped[['Invoice_No_clean', 'Remarks', 'Total']], on='Invoice_No_clean', how='left')
-    df_check = pd.read_csv('https://research.buywclothes.com/financereport/user_remark_vendor_report.csv')
-   
+    # Define status
+    def get_status(row):
+        if row['COUNT'] == 1:
+            return 'NOT DUPLICATE'
+        elif row['TOTAL_INVOICE_AMOUNT'] == 0:
+            return 'CONTRA'
+        else:
+            return 'DUPLICATE'
 
-    df2['KEY'] = (df2['Vendor code'].astype(str) + '-' +df2['Voucher'].astype(str) )
-    df_check['KEY'] = (df_check['Vendor code'].astype(str) + '-' +df_check['Voucher'].astype(str) )
-    filtered_table2 = df2[~df2['KEY'].isin(df_check['KEY'])]
+    result['Remarks'] = result.apply(get_status, axis=1)
 
-    df3 = pd.concat([df_check, filtered_table2], ignore_index=True)
-    df3 = df3.drop('KEY', axis=1)
+    # Merge the status back to the original DataFrame
+    df2 = df1.merge(result[['KEY', 'Remarks','TOTAL_INVOICE_AMOUNT']], on='KEY', how='left')
+    
+    try:
+        df_check = pd.read_csv('https://research.buywclothes.com/financereport/user_remark_vendor_report.csv')
+        # Create the KEY column in df_check
+        df_check['KEY'] = df_check['Vendor code'].astype(str) + '-' + df_check['Voucher'].astype(str)
+
+        # Filter rows not in df_check
+        filtered_table2 = df2[~df2['KEY'].isin(df_check['KEY'])]
+
+        # Combine existing and new data
+        df3 = pd.concat([df_check, filtered_table2], ignore_index=True)
+
+    except Exception as e:
+        print("Could not load df_check, using df2 only. Error:", e)
+        df3 = df2.copy()
 
     st.dataframe(df3.head())
 
@@ -155,3 +172,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+import
