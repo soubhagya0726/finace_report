@@ -115,7 +115,7 @@ def vendor_ledger_analysis(uploaded_csv_file):
     df1['Remarks'] = df1['Remarks'].fillna(df1['REMARKS_NON_BANK'])
 
     # Drop helper columns
-    df1.drop(columns=['IS_BANK_PAYMENT', 'REMARKS_NON_BANK', 'Invoice_No_clean'], inplace=True)
+    df1.drop(columns=['IS_BANK_PAYMENT', 'REMARKS_NON_BANK'], inplace=True)
 
     # (The rest of your logic for merging with df_check remains unchanged)
 
