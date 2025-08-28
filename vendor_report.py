@@ -85,7 +85,7 @@ def vendor_ledger_analysis(uploaded_csv_file):
     # Assign 'BANK PAYMENT' remarks for bank payments
     df1.loc[df1['IS_BANK_PAYMENT'], 'Remarks'] = 'BANK PAYMENT'
 
-    # For non-bank payments, calculate sum and counts grouped by KEY
+    # For non-bank payments, calculate sum and counts grouped by Invoice_No_clean
     grouped = (
         df1.loc[~df1['IS_BANK_PAYMENT']]
         .groupby('Invoice_No_clean')
@@ -107,8 +107,8 @@ def vendor_ledger_analysis(uploaded_csv_file):
 
     grouped['REMARKS_NON_BANK'] = grouped.apply(get_remarks, axis=1)
 
-    # Merge these remarks back into df1 on KEY
-    df1 = df1.merge(grouped[['Invoice_No_clean', 'REMARKS_NON_BANK']], on='KEY', how='left')
+    # Merge these remarks back into df1 on Invoice_No_clean
+    df1 = df1.merge(grouped[['Invoice_No_clean', 'REMARKS_NON_BANK']], on='Invoice_No_clean', how='left')
 
     # Fill Remarks: bank payments already have 'BANK PAYMENT',
     # so fill remaining blanks with non-bank remarks
@@ -117,17 +117,15 @@ def vendor_ledger_analysis(uploaded_csv_file):
     # Drop helper columns
     df1.drop(columns=['IS_BANK_PAYMENT', 'REMARKS_NON_BANK'], inplace=True)
 
-    # (The rest of your logic for merging with df_check remains unchanged)
-
+    # Merge with user remark file
     try:
         df_check = pd.read_csv('https://research.buywclothes.com/financereport/user_remark_vendor_report.csv')
-        df_check['KEY'] = df_check['Vendor code'].astype(str) + '-' + df_check['Voucher'].astype(str)
+        df_check['KEY'] = df_check['Vendor code'].astype(str) + '-' + df_check['Voucher'].astype(str) + '-' + df_check['Invoice_No_clean'].astype(str)
         filtered_table2 = df1[~df1['KEY'].isin(df_check['KEY'])]
         df_final = pd.concat([df_check, filtered_table2], ignore_index=True)
     except Exception as e:
         st.warning(f"⚠ Could not load user remark file, using local data only. Error: {e}")
         df_final = df1
-
     st.dataframe(df_final.head())
 
     csv_buffer = io.StringIO()
