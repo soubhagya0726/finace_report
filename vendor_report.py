@@ -108,7 +108,7 @@ def vendor_ledger_analysis(uploaded_csv_file):
     grouped['REMARKS_NON_BANK'] = grouped.apply(get_remarks, axis=1)
 
     # Merge these remarks back into df1 on KEY
-    df1 = df1.merge(grouped[['KEY', 'REMARKS_NON_BANK']], on='KEY', how='left')
+    df1 = df1.merge(grouped[['Invoice_No_clean', 'REMARKS_NON_BANK']], on='KEY', how='left')
 
     # Fill Remarks: bank payments already have 'BANK PAYMENT',
     # so fill remaining blanks with non-bank remarks
