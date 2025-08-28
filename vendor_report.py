@@ -88,10 +88,10 @@ def vendor_ledger_analysis(uploaded_csv_file):
     # For non-bank payments, calculate sum and counts grouped by KEY
     grouped = (
         df1.loc[~df1['IS_BANK_PAYMENT']]
-        .groupby('KEY')
+        .groupby('Invoice_No_clean')
         .agg(
             TOTAL_INVOICE_AMOUNT=('Total', 'sum'),
-            COUNT=('KEY', 'count')
+            COUNT=('Invoice_No_clean', 'count')
         )
         .reset_index()
     )
